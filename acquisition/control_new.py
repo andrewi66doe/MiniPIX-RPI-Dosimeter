@@ -2,9 +2,8 @@
 import time
 import datetime
 import measure
-import csv
 
-from acquisition_example import do_hasp_acquisition, device
+from acquisition.acquisition_example import do_hasp_acquisition, device
 
 file = open("num.txt", "r+")
 num = int(file.read())

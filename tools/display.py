@@ -1,7 +1,7 @@
-import pygame, sys, random
-from pygame.locals import *
-from time import sleep
-from clustercount import PmfFile, cluster_count
+import pygame, sys
+
+from analysis.clusteranalysis import cluster_count
+from analysis.minipix import PmfFile
 
 import numpy as np
 
@@ -47,7 +47,6 @@ def do_visualization(file, frame, mode='bb'):
 
 
 def render_frame(data, screen, fill=True):
-
     for j in range(SCREEN_Y):
         for i in range(SCREEN_X):
             if data[j][i].value > int(sys.argv[3]):
@@ -68,7 +67,6 @@ def render_track(cluster_info, screen):
 
 
 def render_bb(cluster_info, screen):
-
     for cluster in cluster_info:
         rect_points = [np.flip(np.ceil(x), 0) for x in (cluster[6] + 1) * 2.0]
         pygame.draw.polygon(screen, RED, rect_points, 1)
@@ -108,7 +106,7 @@ if __name__ == "__main__":
 
     while not done:
         time = file.get_frame_timestamp(frame)
-        pygame.display.set_caption("Frame {} of {}".format(frame, file.num_frames-1))
+        pygame.display.set_caption("Frame {} of {}".format(frame, file.num_frames - 1))
         frame_label = myfont.render("Clusters: {} Time: {}".format(clusters, time), 1, (255, 255, 0))
 
         screen.blit(frame_label, (5, 0))
@@ -123,7 +121,7 @@ if __name__ == "__main__":
                         frame -= 1
                     clusters = do_visualization(file, frame, mode=visualization_types[vtype])
                 if event.key == pygame.K_RIGHT:
-                    if frame < file.num_frames-1:
+                    if frame < file.num_frames - 1:
                         frame += 1
                     clusters = do_visualization(file, frame, mode=visualization_types[vtype])
                 if event.key == pygame.K_UP:
@@ -132,4 +130,3 @@ if __name__ == "__main__":
                 if event.key == pygame.K_DOWN:
                     vtype = (vtype - 1) % len(visualization_types)
                     do_visualization(file, frame, mode=visualization_types[vtype])
-
