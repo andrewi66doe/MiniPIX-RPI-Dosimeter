@@ -13,8 +13,8 @@ class MiniPIX(Thread):
         Thread.__init__(self, **kwargs)
         self.variable = variable
         self.shutter_time = shutter_time
-        self.max_shutter_time = 0
-        self.min_shutter_time = 0
+        self.max_shutter_time = 4
+        self.min_shutter_time = .01
         self.max_ramp_rate = 0
         self.data = Queue()
         self.shutdown = Event()
@@ -26,7 +26,14 @@ class MiniPIX(Thread):
         :return:
         """
         # Test data for now since I don't actually have a MiniPix
-        acquisition = [[randint(0, 1) for _ in range(256)] for _ in range(256)]
+        # acquisition = [[randint(0, 1) for _ in range(256)] for _ in range(256)]
+
+        # Generate frames with 3 percent covered
+        acquisition = []
+        for _ in range(7):
+            acquisition.append([1 for _ in range(256)])
+        for _ in range(249):
+            acquisition.append([0 for _ in range(256)])
         return acquisition
 
     @staticmethod
@@ -47,6 +54,12 @@ class MiniPIX(Thread):
         while not self.shutdown.is_set():
             hit_rate = count/shutter_time
             shutter_time = DESIRED_DETECTOR_AREA_3_PERCENT/hit_rate
+            
+            if shutter_time < self.min_shutter_time:
+                shutter_time = self.min_shutter_time
+            if shutter_time > self.max_shutter_time:
+                shutter_time = self.max_shutter_time
+
             print("ShutterTime: {} Count: {}".format(shutter_time, count))
             acq = self._take_aquisition(shutter_time)
             self.data.put(acq)
@@ -88,3 +101,4 @@ if __name__ == "__main__":
         minipix.get_last_acquisition()
 
     minipix.stop_acquisitions()
+    sleep(1)
