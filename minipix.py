@@ -57,9 +57,9 @@ class MiniPIX(Thread):
             self.shutter_time = DESIRED_DETECTOR_AREA_3_PERCENT/hit_rate
 
             if self.shutter_time < self.min_shutter_time:
-                shutter_time = self.min_shutter_time
+                self.shutter_time = self.min_shutter_time
             if self.shutter_time > self.max_shutter_time:
-                shutter_time = self.max_shutter_time
+                self.shutter_time = self.max_shutter_time
 
             print("ShutterTime: {0:.2f} Count: {1} FrameRate: {2:.2f}".format(self.shutter_time, count, 1/self.shutter_time))
             acq = self._take_aquisition(self.shutter_time)
