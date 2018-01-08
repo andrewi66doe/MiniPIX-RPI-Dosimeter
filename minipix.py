@@ -17,6 +17,7 @@ class MiniPIX(Thread):
         self.min_shutter_time = .01
         self.max_ramp_rate = 0
         self.data = Queue()
+        self.acquire = Event()
         self.shutdown = Event()
 
     @staticmethod
@@ -25,6 +26,7 @@ class MiniPIX(Thread):
         :param shutter_time: Length of time to expose MiniPIX for
         :return:
         """
+        sleep(shutter_time)
         # Test data for now since I don't actually have a MiniPix
         # acquisition = [[randint(0, 1) for _ in range(256)] for _ in range(256)]
 
@@ -51,10 +53,10 @@ class MiniPIX(Thread):
         self.data.put(acq)
         count = self._total_hit_pixels(acq)
 
-        while not self.shutdown.is_set():
+        while not self.acquire.is_set():
             hit_rate = count/shutter_time
             shutter_time = DESIRED_DETECTOR_AREA_3_PERCENT/hit_rate
-            
+
             if shutter_time < self.min_shutter_time:
                 shutter_time = self.min_shutter_time
             if shutter_time > self.max_shutter_time:
@@ -66,39 +68,43 @@ class MiniPIX(Thread):
             count = self._total_hit_pixels(acq)
 
     def _constant_frame_rate(self):
-        while not self.shutdown.is_set():
+        while not self.acquire.is_set():
             acq = self._take_aquisition(self.shutter_time)
             self.data.put(acq)
 
     def _begin_acquisitions(self):
-        print("Beginning acquisitions...")
         if self.variable:
             self._variable_frame_rate()
         else:
             self._constant_frame_rate()
-        print("Stopping acquisitions...")
 
     def stop_acquisitions(self):
-        self.shutdown.set()
+        self.acquire.set()
 
     def start_acquisitions(self):
-        if self.shutdown.is_set():
-            self.shutdown = Event()
-            self._begin_acquisitions()
+        self.acquire.clear()
 
     def get_last_acquisition(self, block=True):
         return self.data.get(block=block)
 
     def run(self):
-        self._begin_acquisitions()
+        while not self.shutdown.is_set():
+            self._begin_acquisitions()
 
 
 if __name__ == "__main__":
     minipix = MiniPIX(variable=True)
     minipix.start()
-    for x in range(100):
+    for x in range(3):
         print("Retrieving acquisition")
         minipix.get_last_acquisition()
 
+    print("Stopping acquisitions")
     minipix.stop_acquisitions()
     sleep(1)
+    print("Restarting acquisitions")
+    minipix.start_acquisitions()
+    sleep(5)
+    minipix.stop_acquisitions()
+    minipix.shutdown.set()
+
