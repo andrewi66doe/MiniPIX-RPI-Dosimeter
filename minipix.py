@@ -9,16 +9,16 @@ DESIRED_DETECTOR_AREA_5_PERCENT = 3276
 
 
 class MiniPIX(Thread):
-    def __init__(self, variable=False, shutter_time=1, **kwargs):
+    def __init__(self, variable_frate=False, shutter_time=1, **kwargs):
         Thread.__init__(self, **kwargs)
-        self.variable = variable
+        self.variable = variable_frate
         self.shutter_time = shutter_time
         self.max_shutter_time = 4
         self.min_shutter_time = .01
         self.max_ramp_rate = 0
         self.data = Queue()
         self.stop_acquisitions = Event()
-        self.shutdown = Event()
+        self.shutdown_flag = Event()
 
     @staticmethod
     def _take_aquisition(shutter_time):
@@ -44,7 +44,7 @@ class MiniPIX(Thread):
         :param frame: Frame of acquired MiniPIX data
         :return:
         """
-        total_hit_pixels = sum([x.count(1) for x in frame])
+        total_hit_pixels = sum([[y > 0 for y in x].count(True) for x in frame])
         return total_hit_pixels
 
     def _variable_frame_rate(self):
@@ -78,33 +78,37 @@ class MiniPIX(Thread):
         else:
             self._constant_frame_rate()
 
-    def stop_acquisitions(self):
+    def pause_acquisitions(self):
         self.stop_acquisitions.set()
 
     def start_acquisitions(self):
         self.stop_acquisitions.clear()
 
+    def shutdown(self):
+        self.stop_acquisitions.set()
+        self.shutdown_flag.set()
+
     def get_last_acquisition(self, block=True):
         return self.data.get(block=block)
 
     def run(self):
-        while not self.shutdown.is_set():
+        while not self.shutdown_flag.is_set():
             self._begin_acquisitions()
 
 
 if __name__ == "__main__":
-    minipix = MiniPIX(variable=True)
+    minipix = MiniPIX(variable_frate=True)
     minipix.start()
     for x in range(3):
         print("Retrieving acquisition")
         minipix.get_last_acquisition()
 
     print("Stopping acquisitions")
-    minipix.stop_acquisitions()
+    minipix.pause_acquisitions()
     sleep(1)
     print("Restarting acquisitions")
     minipix.start_acquisitions()
     sleep(5)
-    minipix.stop_acquisitions()
-    minipix.shutdown.set()
+    minipix.pause_acquisitions()
+    minipix.shutdown()
 
