@@ -1,7 +1,7 @@
 import struct
 import smbus
 import sys
-from settings import i2CBUS
+#from settings import i2CBUS
 
 
 def read_voltage(bus):
@@ -26,7 +26,7 @@ def read_capacity(bus):
 
 if __name__ == "__main__":
 
-    bus = smbus.SMBus(i2CBUS)  # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
+    bus = smbus.SMBus(1)  # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
 
     print
     "Voltage:%5.2fV" % read_voltage(bus)
