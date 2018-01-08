@@ -13,8 +13,8 @@ class MiniPIX(Thread):
         Thread.__init__(self, **kwargs)
         self.variable = variable_frate
         self.shutter_time = shutter_time
-        self.max_shutter_time = 4
-        self.min_shutter_time = .01
+        self.max_shutter_time = 2
+        self.min_shutter_time = .03  # 30 frames per second
         self.max_ramp_rate = 0
         self.data = Queue()
         self.stop_acquisitions = Event()
@@ -32,7 +32,7 @@ class MiniPIX(Thread):
 
         # Generate frames with 3 percent covered
         acquisition = []
-        for _ in range(7):
+        for _ in range(8):
             acquisition.append([1 for _ in range(256)])
         for _ in range(249):
             acquisition.append([0 for _ in range(256)])
@@ -48,22 +48,21 @@ class MiniPIX(Thread):
         return total_hit_pixels
 
     def _variable_frame_rate(self):
-        shutter_time = self.shutter_time
-        acq = self._take_aquisition(shutter_time)
+        acq = self._take_aquisition(self.shutter_time)
         self.data.put(acq)
         count = self._total_hit_pixels(acq)
 
         while not self.stop_acquisitions.is_set():
-            hit_rate = count/shutter_time
-            shutter_time = DESIRED_DETECTOR_AREA_3_PERCENT/hit_rate
+            hit_rate = count/self.shutter_time
+            self.shutter_time = DESIRED_DETECTOR_AREA_3_PERCENT/hit_rate
 
-            if shutter_time < self.min_shutter_time:
+            if self.shutter_time < self.min_shutter_time:
                 shutter_time = self.min_shutter_time
-            if shutter_time > self.max_shutter_time:
+            if self.shutter_time > self.max_shutter_time:
                 shutter_time = self.max_shutter_time
 
-            print("ShutterTime: {} Count: {}".format(shutter_time, count))
-            acq = self._take_aquisition(shutter_time)
+            print("ShutterTime: {0:.2f} Count: {1} FrameRate: {2:.2f}".format(self.shutter_time, count, 1/self.shutter_time))
+            acq = self._take_aquisition(self.shutter_time)
             self.data.put(acq)
             count = self._total_hit_pixels(acq)
 
@@ -99,7 +98,7 @@ class MiniPIX(Thread):
 if __name__ == "__main__":
     minipix = MiniPIX(variable_frate=True)
     minipix.start()
-    for x in range(3):
+    for _ in range(10):
         print("Retrieving acquisition")
         minipix.get_last_acquisition()
 
