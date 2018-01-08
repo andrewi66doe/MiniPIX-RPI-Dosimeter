@@ -17,7 +17,7 @@ class MiniPIX(Thread):
         self.min_shutter_time = .01
         self.max_ramp_rate = 0
         self.data = Queue()
-        self.acquire = Event()
+        self.stop_acquisitions = Event()
         self.shutdown = Event()
 
     @staticmethod
@@ -53,7 +53,7 @@ class MiniPIX(Thread):
         self.data.put(acq)
         count = self._total_hit_pixels(acq)
 
-        while not self.acquire.is_set():
+        while not self.stop_acquisitions.is_set():
             hit_rate = count/shutter_time
             shutter_time = DESIRED_DETECTOR_AREA_3_PERCENT/hit_rate
 
@@ -68,7 +68,7 @@ class MiniPIX(Thread):
             count = self._total_hit_pixels(acq)
 
     def _constant_frame_rate(self):
-        while not self.acquire.is_set():
+        while not self.stop_acquisitions.is_set():
             acq = self._take_aquisition(self.shutter_time)
             self.data.put(acq)
 
@@ -79,10 +79,10 @@ class MiniPIX(Thread):
             self._constant_frame_rate()
 
     def stop_acquisitions(self):
-        self.acquire.set()
+        self.stop_acquisitions.set()
 
     def start_acquisitions(self):
-        self.acquire.clear()
+        self.stop_acquisitions.clear()
 
     def get_last_acquisition(self, block=True):
         return self.data.get(block=block)
