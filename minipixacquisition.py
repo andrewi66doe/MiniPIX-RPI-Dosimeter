@@ -1,6 +1,5 @@
 from threading import Thread, Event
 from queue import Queue
-from random import randint
 from time import sleep
 
 DESIRED_DETECTOR_AREA_3_PERCENT = 1966  # 3% of the detector area in pixels
@@ -8,7 +7,7 @@ DESIRED_DETECTOR_AREA_4_PERCENT = 2621
 DESIRED_DETECTOR_AREA_5_PERCENT = 3276
 
 
-class MiniPIX(Thread):
+class MiniPIXAcquisition(Thread):
     def __init__(self, variable_frate=False, shutter_time=1, **kwargs):
         Thread.__init__(self, **kwargs)
         self.variable = variable_frate
@@ -28,7 +27,6 @@ class MiniPIX(Thread):
         """
         sleep(shutter_time)
         # Test data for now since I don't actually have a MiniPix
-        # acquisition = [[randint(0, 1) for _ in range(256)] for _ in range(256)]
 
         # Generate frames with 3 percent covered
         acquisition = []
@@ -96,7 +94,7 @@ class MiniPIX(Thread):
 
 
 if __name__ == "__main__":
-    minipix = MiniPIX(variable_frate=True)
+    minipix = MiniPIXAcquisition(variable_frate=True)
     minipix.start()
     for _ in range(10):
         print("Retrieving acquisition")
