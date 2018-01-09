@@ -94,18 +94,18 @@ class MiniPIXAcquisition(Thread):
 
 
 if __name__ == "__main__":
-    minipix = MiniPIXAcquisition(variable_frate=True)
-    minipix.start()
+    acquisitions = MiniPIXAcquisition(variable_frate=True)
+    acquisitions.start()
     for _ in range(10):
         print("Retrieving acquisition")
-        minipix.get_last_acquisition()
+        acquisitions.get_last_acquisition()
 
     print("Stopping acquisitions")
-    minipix.pause_acquisitions()
+    acquisitions.pause_acquisitions()
     sleep(1)
     print("Restarting acquisitions")
-    minipix.start_acquisitions()
+    acquisitions.start_acquisitions()
     sleep(5)
-    minipix.pause_acquisitions()
-    minipix.shutdown()
+    acquisitions.pause_acquisitions()
+    acquisitions.shutdown()
 
