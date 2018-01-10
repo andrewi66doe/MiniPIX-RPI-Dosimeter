@@ -1,3 +1,8 @@
+import pypixet
+pypixet.start()
+pixet = pypixet.pixet
+dev = pixet.devices()[0]
+
 from threading import Thread, Event
 from queue import Queue
 from time import sleep
@@ -25,16 +30,19 @@ class MiniPIXAcquisition(Thread):
         :param shutter_time: Length of time to expose MiniPIX for
         :return:
         """
-        sleep(shutter_time)
+        #sleep(shutter_time)
         # Test data for now since I don't actually have a MiniPix
 
         # Generate frames with 3 percent covered
-        acquisition = []
-        for _ in range(8):
-            acquisition.append([1 for _ in range(256)])
-        for _ in range(249):
-            acquisition.append([0 for _ in range(256)])
-        return acquisition
+        #acquisition = []
+        # for _ in range(8):
+        #     acquisition.append([1 for _ in range(256)])
+        # for _ in range(249):
+        #     acquisition.append([0 for _ in range(256)])
+        dev.doSimpleAcquisition(1, shutter_time, pixet.PX_FTYPE_AUTODETECT, "ouput.pmf")
+        frame = dev.lastAcqFrameRefInc()
+
+        return frame.data
 
     @staticmethod
     def _total_hit_pixels(frame):
@@ -42,7 +50,8 @@ class MiniPIXAcquisition(Thread):
         :param frame: Frame of acquired MiniPIX data
         :return:
         """
-        total_hit_pixels = sum([[y > 0 for y in x].count(True) for x in frame])
+        #total_hit_pixels = sum([[y > 0 for y in x].count(True) for x in frame])
+        total_hit_pixels = [x > 0 for x in frame].count(True)
         return total_hit_pixels
 
     def _variable_frame_rate(self):
