@@ -3,11 +3,13 @@ import subprocess
 
 from itertools import islice
 from dateutil import parser as dateparser
+from math import sqrt
 
 
 # Width and height of minipix detector
 DATA_FRAME_WIDTH = 256
 DATA_FRAME_HEIGHT = 256
+
 
 # Quick way of determining line count of a file
 # Note: This is not portable to non unix like systems
