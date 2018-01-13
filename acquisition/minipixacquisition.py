@@ -1,9 +1,8 @@
 
 from threading import Thread, Event
-from queue import Queue
+from Queue import Queue
 from time import sleep
 
-from acquisition.minipix import initialize_minipix
 
 DESIRED_DETECTOR_AREA_3_PERCENT = 1966  # 3% of the detector area in pixels
 DESIRED_DETECTOR_AREA_4_PERCENT = 2621
@@ -11,7 +10,9 @@ DESIRED_DETECTOR_AREA_5_PERCENT = 3276
 
 
 class MiniPIXAcquisition(Thread):
-    def __init__(self, minipix,
+    def __init__(self, 
+                 minipix,
+                 pixet,
                  variable_frate=False,
                  shutter_time=1,
                  detector_area=DESIRED_DETECTOR_AREA_3_PERCENT,
@@ -24,6 +25,7 @@ class MiniPIXAcquisition(Thread):
         """
         Thread.__init__(self, **kwargs)
         self.minipix = minipix
+        self.pixet = pixet
         self.variable = variable_frate
         self.shutter_time = shutter_time
         self.detector_area = detector_area
@@ -40,10 +42,10 @@ class MiniPIXAcquisition(Thread):
         :return:
         """
 
-        self.minipix.doSimpleAcquisition(1, self.shutter_time, pixet.PX_FTYPE_AUTODETECT, "ouput.pmf")
+        self.minipix.doSimpleAcquisition(1, self.shutter_time, self.pixet.PX_FTYPE_AUTODETECT, "ouput.pmf")
         frame = self.minipix.lastAcqFrameRefInc()
 
-        return frame.data
+        return frame.data()
 
     @staticmethod
     def _total_hit_pixels(frame):
@@ -71,8 +73,6 @@ class MiniPIXAcquisition(Thread):
             if self.shutter_time > self.max_shutter_time:
                 self.shutter_time = self.max_shutter_time
 
-            print("ShutterTime: {0:.2f} Count: {1} FrameRate: {2:.2f}".format(self.shutter_time, count,
-                                                                              1 / self.shutter_time))
             acq = self._take_aquisition()
             self.data.put(acq)
             count = self._total_hit_pixels(acq)
@@ -103,6 +103,7 @@ class MiniPIXAcquisition(Thread):
 
     def run(self):
         while not self.shutdown_flag.is_set():
+            print("loop")
             self._begin_acquisitions()
 
 
@@ -113,14 +114,11 @@ if __name__ == "__main__":
     acquisitions = MiniPIXAcquisition(minipix, variable_frate=True)
     acquisitions.start()
 
-    for _ in range(10):
-        print("Retrieving acquisition")
+    while acquisitions.is_alive():
         acquisitions.data.get()
 
-    print("Stopping acquisitions")
     acquisitions.pause_acquisitions()
     sleep(1)
-    print("Restarting acquisitions")
     acquisitions.start_acquisitions()
     sleep(5)
     acquisitions.pause_acquisitions()
