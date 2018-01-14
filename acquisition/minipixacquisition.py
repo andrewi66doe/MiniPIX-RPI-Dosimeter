@@ -103,7 +103,6 @@ class MiniPIXAcquisition(Thread):
 
     def run(self):
         while not self.shutdown_flag.is_set():
-            print("loop")
             self._begin_acquisitions()
 
 
