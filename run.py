@@ -1,6 +1,7 @@
 import smbus
 import pypixet
 
+from numpy import array
 from picamera import PiCamera
 from time import sleep, strftime
 
@@ -18,7 +19,6 @@ class RPIDosimeter:
         self.calibration.load_calib_b("b.txt")
         self.calibration.load_calib_c("c.txt")
         self.calibration.load_calib_t("t.txt")
-
         # Initialize miniPIX driver subsystem
         pypixet.start()
         pixet = pypixet.pixet
@@ -32,8 +32,9 @@ class RPIDosimeter:
         print("Found device: {}".format(device.fullName()))
 
         self.minipix = MiniPIXAcquisition(device, pixet, variable_frate=True)
+        self.minipix.daemon = True
         self.bus = smbus.SMBus(i2CBUS)
-        self.camera = PiCamera()
+        #self.camera = PiCamera()
 
         self.running = False
 
@@ -50,19 +51,25 @@ class RPIDosimeter:
         while self.minipix.is_alive():
             # If there's an acquisition available for analysis
             if not self.minipix.data.empty():
-                acq = self.minipix.get_last_acquisition(block=False)
+                acq, count = self.minipix.get_last_acquisition(block=True)
+                arr = array(acq)
+                energy = self.calibration.apply_calibration(arr)
+
                 print("Analyzing acquisition in main thread...")
-                frame = Frame(acq, self.calibration)
-                frame.do_clustering()
-                print("Clusters: {}".format(frame.cluster_count))
-            temp, pressure = get_environmentals(self.bus)
-            print("Temperature: {0:.2f} C Pressure: {1:.2f} mbar".format(temp, pressure))
+                frame = Frame(energy)
+                if count > 0:
+                    frame.do_clustering()
+                dose = (sum(energy)/96081.3)/self.minipix.shutter_time
+                print("Pixel Count: {} Clusters: {} Total Energy: {} DoseRate: {}".format(count, frame.cluster_count, sum(energy), dose*60))
+            #temp, pressure = get_environmentals(self.bus)
+            #print("Temperature: {0:.2f} C Pressure: {1:.2f} mbar".format(temp, pressure))
 
     def shutdown(self):
         print("Stopping acquisitions...")
         self.minipix.shutdown()
         print("Exiting main thread...")
-
+        # Wait for minipix to shutdown properly
+        sleep(2)
 
 if __name__ == "__main__":
     app = RPIDosimeter()

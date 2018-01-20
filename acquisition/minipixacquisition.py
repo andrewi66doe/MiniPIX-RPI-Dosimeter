@@ -1,6 +1,7 @@
 from threading import Thread, Event
 from Queue import Queue
 from time import sleep
+from random import randint
 
 DESIRED_DETECTOR_AREA_3_PERCENT = 1966  # 3% of the detector area in pixels
 DESIRED_DETECTOR_AREA_4_PERCENT = 2621
@@ -12,7 +13,7 @@ class MiniPIXAcquisition(Thread):
                  minipix,
                  pixet,
                  variable_frate=False,
-                 shutter_time=1,
+                 shutter_time=.5,
                  detector_area=DESIRED_DETECTOR_AREA_3_PERCENT,
                  **kwargs):
         """
@@ -59,8 +60,8 @@ class MiniPIXAcquisition(Thread):
 
     def _variable_frame_rate(self):
         acq = self._take_aquisition()
-        self.data.put(acq)
         count = self._total_hit_pixels(acq)
+        self.data.put((acq, count))
 
         while not self.stop_acquisitions.is_set():
             hit_rate = count / self.shutter_time
@@ -75,13 +76,13 @@ class MiniPIXAcquisition(Thread):
                 self.shutter_time = self.max_shutter_time
 
             acq = self._take_aquisition()
-            self.data.put(acq)
             count = self._total_hit_pixels(acq)
+            self.data.put((acq, count))
 
     def _constant_frame_rate(self):
         while not self.stop_acquisitions.is_set():
             acq = self._take_aquisition()
-            self.data.put(acq)
+            self.data.put((acq, self._total_hit_pixels(acq)))
 
     def _begin_acquisitions(self):
         if self.variable:

@@ -1,5 +1,6 @@
-from numpy import array, zeros
+from numpy import array, zeros, where
 from math import sqrt
+from skimage.measure import label
 
 from analysis.boundingrect import qhull2d, min_bounding_rect
 
@@ -16,88 +17,64 @@ class Calibration:
 
     def apply_calibration(self, frame):
 
-        e_frame = zeros(65536).reshape(256, 256)
+        e_frame = zeros(65536)
 
-        for x in range(256):
-            for y in range(256):
-                energy = 0
+        for y, tot in enumerate(frame):
+            if tot == 0:
+                continue
+            energy = 0
+            A = self.a[y]
+            T = self.t[y]
+            B = self.b[y] - A * T - tot
+            C = T * frame[y] - self.b[y] * T - self.c[y]
 
-                A = self.a[x][y]
-                T = self.t[x][y]
-                B = self.b[x][y] - A * T - frame[x][y]
-                C = T * frame[x][y] - self.b[x][y] * T - self.c[x][y]
+            if A != 0 and (B * B - 4.0 * A * C) >= 0:
+                energy = ((B * -1) + sqrt(B * B - 4.0 * A * C)) / 2.0 / A
+                if energy < 0:
+                    energy = 0
 
-                if A != 0 and (B * B - 4.0 * A * C) >= 0:
-                    energy = ((B * -1) + sqrt(B * B - 4.0 * A * C)) / 2.0 / A
-                    if energy < 0:
-                        energy = 0
-
-                e_frame[x][y] = energy
+            e_frame[y] = energy
         return e_frame
 
     def load_file(self, fobj):
-        return [line.split for line in fobj.readline()]
+        return [list(map(float, line.split())) for line in fobj.readlines()]
 
     def load_calib_a(self, filename):
         with open(filename, 'r') as a:
             file_a = self.load_file(a)
-            self.a = array(file_a)
+            self.a = array(file_a).flatten()
 
     def load_calib_b(self, filename):
         with open(filename, 'r') as b:
             file_b = self.load_file(b)
-            self.b = array(file_b)
+            self.b = array(file_b).flatten()
 
     def load_calib_c(self, filename):
         with open(filename, 'r') as c:
             file_c = self.load_file(c)
-            self.c = array(file_c)
+            self.c = array(file_c).flatten()
 
     def load_calib_t(self, filename):
         with open(filename, 'r') as t:
             file_t = self.load_file(t)
-            self.t = array(file_t)
+            self.t = array(file_t).flatten()
 
 
 class Frame:
-    def __init__(self, framedata, calibration):
+    def __init__(self, framedata):
         self.cluster_count = 0
         self.clusters = []
         self.acq_time = None
         self.framedata = framedata
         self.data_array = None
-        self.calibration = calibration
 
     def do_clustering(self):
-        arr = array(self.framedata).reshape(256, 256)
-        self.data_array = self.calibration.apply_calibration(arr)
+        arr = where(self.framedata.reshape(256, 256) > 0 , 0, 1)
 
-        for x in range(256):
-            for y in range(256):
-                if self.data_array[x][y] > 0:
-                    cluster = self._floodfill(x, y)
-                    self.clusters.append(cluster)
+        marked, counts = label(arr, connectivity = 2, neighbors=8, return_num=True)
+        self.cluster_count = counts
 
-    def _floodfill(self, x, y):
-        to_fill = set()
-        to_fill.add((x, y))
-
-        cluster_pixels = []
-
-        while not len(to_fill) == 0:
-            x, y = to_fill.pop()
-
-            pixel = self.data_array[y][x]
-            self.data_array[x][y] = -1
-
-            cluster_pixels.append((x, y, self.data_array[x][y]))
-
-            for x, y in pixel.surrounding_pixels():
-                if self.data_array[x][y].value > 0 and not self.data_array[x][y] == -1:
-                    to_fill.add((x, y))
-
-        return Cluster(cluster_pixels)
-
+        
     def _surrounding_pixels(self, x, y):
         pixels = []
 
@@ -136,12 +113,16 @@ class Cluster:
 
         self.bounding_rect = BoundingBox(indices)
         self.pixel_count = len(indices)
-        self.lw_ratio = self.bounding_rect.height / self.bounding_rect.width
-        self.density = self.pixel_count / self.bounding_rect.area
+        if not(self.bounding_rect.height == 0 or self.bounding_rect.width == 0):
+            self.lw_ratio = self.bounding_rect.height / self.bounding_rect.width
+            self.density = self.pixel_count / self.bounding_rect.area
+        else:
+            self.lw_ratio = 0
+            self.density = 0
 
         self.energy = sum([index[2] for index in indices])
         self.track_length = self._get_track_length()
-        self.LET = self.energy / self.track_length
+        #self.LET = self.energy / self.track_length
 
     def _get_track_length(self):
         return None
@@ -186,7 +167,7 @@ class BoundingBox:
         self.height = None
         self.center = None
         self.corners = None
-        self.pixels = pixels
+        self.pixels = array([(x[0],x[1]) for x in pixels])
         self._calculate()
 
     def _calculate(self):
