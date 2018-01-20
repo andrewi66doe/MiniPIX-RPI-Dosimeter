@@ -1,8 +1,6 @@
-
 from threading import Thread, Event
 from Queue import Queue
 from time import sleep
-
 
 DESIRED_DETECTOR_AREA_3_PERCENT = 1966  # 3% of the detector area in pixels
 DESIRED_DETECTOR_AREA_4_PERCENT = 2621
@@ -10,7 +8,7 @@ DESIRED_DETECTOR_AREA_5_PERCENT = 3276
 
 
 class MiniPIXAcquisition(Thread):
-    def __init__(self, 
+    def __init__(self,
                  minipix,
                  pixet,
                  variable_frate=False,
@@ -42,7 +40,10 @@ class MiniPIXAcquisition(Thread):
         :return:
         """
 
-        self.minipix.doSimpleAcquisition(1, self.shutter_time, self.pixet.PX_FTYPE_AUTODETECT, "ouput.pmf")
+        self.minipix.doSimpleAcquisition(1,
+                                         self.shutter_time,
+                                         self.pixet.PX_FTYPE_AUTODETECT,
+                                         "ouput.pmf")
         frame = self.minipix.lastAcqFrameRefInc()
 
         return frame.data()
@@ -104,21 +105,3 @@ class MiniPIXAcquisition(Thread):
     def run(self):
         while not self.shutdown_flag.is_set():
             self._begin_acquisitions()
-
-
-if __name__ == "__main__":
-    pixet = initialize_minipix()
-    minipix = pixet.devices()[0]
-
-    acquisitions = MiniPIXAcquisition(minipix, variable_frate=True)
-    acquisitions.start()
-
-    while acquisitions.is_alive():
-        acquisitions.data.get()
-
-    acquisitions.pause_acquisitions()
-    sleep(1)
-    acquisitions.start_acquisitions()
-    sleep(5)
-    acquisitions.pause_acquisitions()
-    acquisitions.shutdown()

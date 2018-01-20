@@ -3,20 +3,23 @@ import pypixet
 
 from picamera import PiCamera
 from time import sleep, strftime
-from Queue import Empty
 
 from settings import i2CBUS
 from orientation.bmp280 import get_environmentals
 from acquisition.minipixacquisition import MiniPIXAcquisition
-
-# Initialize i2c devices, minipix, logging facilities etc.
-def init():
-    pass
+from analysis.frameanalysis import Frame, Calibration
 
 
 class RPIDosimeter:
     # Initialize i2c devices, minipix, logging facilities etc.
     def __init__(self):
+        self.calibration = Calibration()
+        self.calibration.load_calib_a("a.txt")
+        self.calibration.load_calib_b("b.txt")
+        self.calibration.load_calib_c("c.txt")
+        self.calibration.load_calib_t("t.txt")
+
+        # Initialize miniPIX driver subsystem
         pypixet.start()
         pixet = pypixet.pixet
         device = pixet.devices()[0]
@@ -28,9 +31,11 @@ class RPIDosimeter:
 
         print("Found device: {}".format(device.fullName()))
 
-        self.minipix = MiniPIXAcquisition(device,pixet, variable_frate=True)
+        self.minipix = MiniPIXAcquisition(device, pixet, variable_frate=True)
         self.bus = smbus.SMBus(i2CBUS)
         self.camera = PiCamera()
+
+        self.running = False
 
     def capture_image(self):
         filename = strftime("%Y-%m-%d-%H:%M:%S")
@@ -38,15 +43,18 @@ class RPIDosimeter:
         sleep(2)
 
     def main(self):
-        #self.capture_image()
+        # self.capture_image()
         self.minipix.start()
+        self.running = True
 
         while self.minipix.is_alive():
-            try:
+            # If there's an acquisition available for analysis
+            if not self.minipix.data.empty():
                 acq = self.minipix.get_last_acquisition(block=False)
-                print("Received acquisition in main thread...")
-            except Empty:
-                pass
+                print("Analyzing acquisition in main thread...")
+                frame = Frame(acq, self.calibration)
+                frame.do_clustering()
+                print("Clusters: {}".format(frame.cluster_count))
             temp, pressure = get_environmentals(self.bus)
             print("Temperature: {0:.2f} C Pressure: {1:.2f} mbar".format(temp, pressure))
 
