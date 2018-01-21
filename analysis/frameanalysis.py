@@ -1,4 +1,4 @@
-from numpy import array, zeros, where
+from numpy import array, zeros, where, nonzero, transpose
 from math import sqrt
 from skimage.measure import label
 
@@ -69,10 +69,25 @@ class Frame:
         self.data_array = None
 
     def do_clustering(self):
-        arr = where(self.framedata.reshape(256, 256) > 0 , 0, 1)
-
-        marked, counts = label(arr, connectivity = 2, neighbors=8, return_num=True)
+        arr = self.framedata.reshape(256, 256)
+        binarr = self.framedata.reshape(256, 256)
+        binarr[arr > 0] = 1
+        marked, counts = label(binarr, connectivity = 2, neighbors=8, return_num=True)
         self.cluster_count = counts
+
+        hit_pixels = transpose(nonzero(marked))
+
+        clusters = {}
+
+        for x,y in hit_pixels:
+            if marked[x][y] not in clusters.keys():
+                clusters[marked[x][y]] = [(x,y,arr[x][y])]
+            else:
+                clusters[marked[x][y]].append((x,y,arr[x][y]))
+
+        for cluster in clusters:
+            self.clusters.append(Cluster(clusters[cluster]))
+                
 
         
     def _surrounding_pixels(self, x, y):

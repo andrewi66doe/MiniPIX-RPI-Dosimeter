@@ -1,7 +1,7 @@
 import smbus
 import pypixet
 
-from numpy import array
+from numpy import array, nonzero
 from picamera import PiCamera
 from time import sleep, strftime
 
@@ -31,7 +31,7 @@ class RPIDosimeter:
 
         print("Found device: {}".format(device.fullName()))
 
-        self.minipix = MiniPIXAcquisition(device, pixet, variable_frate=True)
+        self.minipix = MiniPIXAcquisition(device, pixet, variable_frate=False, shutter_time=5)
         self.minipix.daemon = True
         self.bus = smbus.SMBus(i2CBUS)
         #self.camera = PiCamera()
@@ -52,15 +52,18 @@ class RPIDosimeter:
             # If there's an acquisition available for analysis
             if not self.minipix.data.empty():
                 acq, count = self.minipix.get_last_acquisition(block=True)
-                arr = array(acq)
+                arr = array(acq, dtype='float32')
                 energy = self.calibration.apply_calibration(arr)
 
-                print("Analyzing acquisition in main thread...")
                 frame = Frame(energy)
                 if count > 0:
                     frame.do_clustering()
-                dose = (sum(energy)/96081.3)/self.minipix.shutter_time
+                dose = (sum(energy[nonzero(energy)])/96081.3)/self.minipix.shutter_time
                 print("Pixel Count: {} Clusters: {} Total Energy: {} DoseRate: {}".format(count, frame.cluster_count, sum(energy), dose*60))
+
+                for i, cluster in enumerate(frame.clusters):
+                    print("\tCluster: {} Density: {} energy: {}".format(i, cluster.density, cluster.energy))
+    
             #temp, pressure = get_environmentals(self.bus)
             #print("Temperature: {0:.2f} C Pressure: {1:.2f} mbar".format(temp, pressure))
 
