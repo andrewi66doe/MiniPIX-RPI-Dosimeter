@@ -3,6 +3,8 @@ from Queue import Queue
 from time import sleep
 from random import randint
 
+from numpy import nonzero
+
 DESIRED_DETECTOR_AREA_3_PERCENT = 1966  # 3% of the detector area in pixels
 DESIRED_DETECTOR_AREA_4_PERCENT = 2621
 DESIRED_DETECTOR_AREA_5_PERCENT = 3276
@@ -44,7 +46,7 @@ class MiniPIXAcquisition(Thread):
         self.minipix.doSimpleAcquisition(1,
                                          self.shutter_time,
                                          self.pixet.PX_FTYPE_AUTODETECT,
-                                         "ouput.pmf")
+                                         'output.pmf')
         frame = self.minipix.lastAcqFrameRefInc()
 
         return frame.data()
@@ -55,7 +57,7 @@ class MiniPIXAcquisition(Thread):
         :param frame: Frame of acquired MiniPIX data
         :return:
         """
-        total_hit_pixels = [x > 0 for x in frame].count(True)
+        total_hit_pixels = len(nonzero(frame)[0])
         return total_hit_pixels
 
     def _variable_frame_rate(self):
@@ -106,3 +108,20 @@ class MiniPIXAcquisition(Thread):
     def run(self):
         while not self.shutdown_flag.is_set():
             self._begin_acquisitions()
+
+
+
+
+def take_acquisition(device, shutter_time, pixet):
+    """
+    :param shutter_time: Length of time to expose MiniPIX for
+    :return:
+    """
+
+    device.doSimpleAcquisition(1,
+                                     shutter_time,
+                                     pixet.PX_FTYPE_AUTODETECT,
+                                     'output.pmf')
+    frame = device.lastAcqFrameRefInc()
+
+    return frame.data()

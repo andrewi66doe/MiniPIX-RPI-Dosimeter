@@ -17,11 +17,11 @@ class Calibration:
 
     def apply_calibration(self, frame):
 
-        e_frame = zeros(65536)
+        e_frame = zeros(65536, dtype="float32")
+        hit = nonzero(frame)
 
-        for y, tot in enumerate(frame):
-            if tot == 0:
-                continue
+        for y in hit[0]:
+            tot = frame[y]
             energy = 0
             A = self.a[y]
             T = self.t[y]
@@ -70,7 +70,7 @@ class Frame:
 
     def do_clustering(self):
         arr = self.framedata.reshape(256, 256)
-        binarr = self.framedata.reshape(256, 256)
+        binarr = array(self.framedata.reshape(256, 256))
         binarr[arr > 0] = 1
         marked, counts = label(binarr, connectivity = 2, neighbors=8, return_num=True)
         self.cluster_count = counts
@@ -78,7 +78,7 @@ class Frame:
         hit_pixels = transpose(nonzero(marked))
 
         clusters = {}
-
+        
         for x,y in hit_pixels:
             if marked[x][y] not in clusters.keys():
                 clusters[marked[x][y]] = [(x,y,arr[x][y])]
@@ -87,7 +87,6 @@ class Frame:
 
         for cluster in clusters:
             self.clusters.append(Cluster(clusters[cluster]))
-                
 
         
     def _surrounding_pixels(self, x, y):
@@ -132,8 +131,8 @@ class Cluster:
             self.lw_ratio = self.bounding_rect.height / self.bounding_rect.width
             self.density = self.pixel_count / self.bounding_rect.area
         else:
-            self.lw_ratio = 0
-            self.density = 0
+            self.lw_ratio = 1
+            self.density = 1
 
         self.energy = sum([index[2] for index in indices])
         self.track_length = self._get_track_length()
