@@ -153,6 +153,21 @@ def cluster_count(data, frame, threshold=0):
     return cluster_info
 
 
+def n_line_iterator(fobj,n):
+    if n < 1:
+       raise ValueError("Must supply a positive number of lines to read")
+
+    out = []
+    num = 0
+    for line in fobj:
+       if num == n:
+          yield out  #yield 1 chunk
+          num = 0
+          out = []
+       out.append(line)
+       num += 1
+    yield out  #need to yield the rest of the lines
+
 def main(args):
     data = PmfFile(args.filename)
     threshold = int(args.threshold)
@@ -170,8 +185,9 @@ def main(args):
     # print("Processing {} frames...".format(data.num_frames))
 
     # Loop through each frame and place calculated track parameters into a dictionary
-    for i, frame in enumerate(data.frames()):
+    for i, lines in enumerate(n_line_iterator(data.pmf_file, 256)):
         print("Frame {}".format(i))
+        frame = data.get_frame(lines)
         energy = 0
         for cluster in cluster_count(data, frame, threshold=threshold):
             _, _, total_energy, _, _, _, _, _ = cluster
