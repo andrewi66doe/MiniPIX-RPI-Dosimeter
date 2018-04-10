@@ -10,6 +10,7 @@ from settings import i2CBUS
 from orientation.bmp280 import get_environmentals
 from acquisition.minipixacquisition import MiniPIXAcquisition, take_acquisition
 from analysis.frameanalysis import Frame, Calibration
+from downlink.processcmd import HASPCommandHandler, SerialConnectionTest
 
 
 class RPIDosimeter:
@@ -32,12 +33,22 @@ class RPIDosimeter:
 
         print("Found device: {}".format(self.device.fullName()))
 
+        # Allows for retrieval of MiniPIX frames at regular intervals
         self.minipix = MiniPIXAcquisition(self.device, self.pixet, variable_frate=False, shutter_time=1)
         self.minipix.daemon = True
+
+        # Allows for regular handling of uplink commmands from HASP
+        self.serial_connection = SerialConnectionTest()
+        self.cmd_handler = HASPCommandHandler(self.serial_connection)
+        self.cmd_handler.start()
+
         self.bus = smbus.SMBus(i2CBUS)
-        #self.camera = PiCamera()
 
         self.running = False
+
+    def __del__(self):
+        self.serial_connection.close()
+
 
     def capture_image(self):
         filename = strftime("%Y-%m-%d-%H:%M:%S")
@@ -71,7 +82,11 @@ class RPIDosimeter:
     def shutdown(self):
         print("Stopping acquisitions...")
         self.minipix.shutdown()
+        self.minipix.join()
         print("Exiting main thread...")
+        print("Stopping HASP command handler thread...")
+        self.cmd_handler.shutdown_flag.set()
+        self.cmd_handler.join()
         # Wait for minipix to shutdown properly
         sleep(2)
 

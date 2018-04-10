@@ -72,53 +72,21 @@ class Frame:
         arr = self.framedata.reshape(256, 256)
         binarr = array(self.framedata.reshape(256, 256))
         binarr[arr > 0] = 1
-        marked, counts = label(binarr, connectivity = 2, neighbors=8, return_num=True)
+        marked, counts = label(binarr, connectivity=2, neighbors=8, return_num=True)
         self.cluster_count = counts
 
         hit_pixels = transpose(nonzero(marked))
 
         clusters = {}
-        
-        for x,y in hit_pixels:
+
+        for x, y in hit_pixels:
             if marked[x][y] not in clusters.keys():
-                clusters[marked[x][y]] = [(x,y,arr[x][y])]
+                clusters[marked[x][y]] = [(x, y, arr[x][y])]
             else:
-                clusters[marked[x][y]].append((x,y,arr[x][y]))
+                clusters[marked[x][y]].append((x, y, arr[x][y]))
 
         for cluster in clusters:
             self.clusters.append(Cluster(clusters[cluster]))
-
-        
-    def _surrounding_pixels(self, x, y):
-        pixels = []
-
-        if self._inbounds(x, y - 1):
-            pixels.append((x, y - 1))
-        if self._inbounds(x, y + 1):
-            pixels.append((x, y + 1))
-        if self._inbounds(x - 1, y):
-            pixels.append((x - 1, y))
-        if self._inbounds(x + 1, y):
-            pixels.append((x + 1, y))
-        if self._inbounds(x - 1, y + 1):
-            pixels.append((x - 1, y + 1))
-        if self._inbounds(x + 1, y + 1):
-            pixels.append((x + 1, y + 1))
-        if self._inbounds(x - 1, y - 1):
-            pixels.append((x - 1, y - 1))
-        if self._inbounds(x + 1, y - 1):
-            pixels.append((x + 1, y - 1))
-
-        return pixels
-
-    @staticmethod
-    def _inbounds(x, y):
-        if x > MINIPIX_WIDTH - 1 or x < 0:
-            return False
-        if y > MINIPIX_HEIGHT - 1 or y < 0:
-            return False
-
-        return True
 
 
 class Cluster:
@@ -127,7 +95,7 @@ class Cluster:
 
         self.bounding_rect = BoundingBox(indices)
         self.pixel_count = len(indices)
-        if not(self.bounding_rect.height == 0 or self.bounding_rect.width == 0):
+        if not (self.bounding_rect.height == 0 or self.bounding_rect.width == 0):
             self.lw_ratio = self.bounding_rect.height / self.bounding_rect.width
             self.density = self.pixel_count / self.bounding_rect.area
         else:
@@ -136,7 +104,7 @@ class Cluster:
 
         self.energy = sum([index[2] for index in indices])
         self.track_length = self._get_track_length()
-        #self.LET = self.energy / self.track_length
+        # self.LET = self.energy / self.track_length
 
     def _get_track_length(self):
         return None
@@ -181,7 +149,7 @@ class BoundingBox:
         self.height = None
         self.center = None
         self.corners = None
-        self.pixels = array([(x[0],x[1]) for x in pixels])
+        self.pixels = array([(x[0], x[1]) for x in pixels])
         self._calculate()
 
     def _calculate(self):

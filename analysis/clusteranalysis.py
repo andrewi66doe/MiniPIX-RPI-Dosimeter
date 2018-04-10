@@ -161,12 +161,13 @@ def n_line_iterator(fobj,n):
     num = 0
     for line in fobj:
        if num == n:
-          yield out  #yield 1 chunk
+          yield out
           num = 0
           out = []
        out.append(line)
        num += 1
-    yield out  #need to yield the rest of the lines
+    yield out
+
 
 def main(args):
     data = PmfFile(args.filename)
