@@ -4,9 +4,9 @@ import traceback
 import pickle
 import itertools
 
-from analysis.mathutils import *
-from analysis.minipix import *
-from analysis.boundingrect import *
+from mathutils import *
+from minipix import *
+from boundingrect import *
 
 SMALL_BLOB = "SMALL_BLOB"
 HEAVY_TRACK = "HEAVY_TRACK"
@@ -186,9 +186,9 @@ def main(args):
     # print("Processing {} frames...".format(data.num_frames))
 
     # Loop through each frame and place calculated track parameters into a dictionary
-    for i, lines in enumerate(n_line_iterator(data.pmf_file, 256)):
+    for i, frame in enumerate(data.frames_gen()):
         print("Frame {}".format(i))
-        frame = data.get_frame(lines)
+        #frame = data.get_frame(lines)
         energy = 0
         for cluster in cluster_count(data, frame, threshold=threshold):
             _, _, total_energy, _, _, _, _, _ = cluster

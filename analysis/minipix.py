@@ -1,6 +1,6 @@
 import re
 import subprocess
-
+import numpy as np
 from itertools import islice
 from dateutil import parser as dateparser
 from math import sqrt
@@ -110,6 +110,20 @@ class PmfFile:
 
         return pmf_data
 
+    def _get_frame(self, lines):
+
+        pmf_data = []
+
+        for y, line in enumerate(lines):
+            row_vals = []
+
+            for x, row_val in enumerate(line.split()):
+                row_vals.append(Pixel(int(row_val), (DATA_FRAME_WIDTH, DATA_FRAME_HEIGHT), (x, y % 256)))
+
+            pmf_data.append(row_vals)
+
+        return pmf_data
+
     @staticmethod
     def frame2nparray(frame):
         array = np.ones((DATA_FRAME_HEIGHT, DATA_FRAME_WIDTH), dtype=float)
@@ -151,11 +165,25 @@ class PmfFile:
         a, b, c, t = self.calib_data
 
         return self._get_energy(ToT, a, b, c, t)
+    
+    def _frames_gen(self):
+        lines = self.pmf_file.readlines()
+        for i in range(0, self.num_frames * DATA_FRAME_HEIGHT, DATA_FRAME_HEIGHT):
+            yield lines[i:i + DATA_FRAME_HEIGHT]
+
+    def frames_gen(self):
+        for frame in self._frames_gen():
+            yield self._get_frame(frame)
 
     # Generator for frames
     def frames(self):
+        import pdb;pdb.set_trace()
         for i in range(self.num_frames):
             yield self.get_frame(i)
+
+    def frames_raw(self):
+        for i in range(self.num_frames):
+            yield self.get_frame_raw(i)
 
     def get_frame_timestamp(self, frame):
         if self.dsc_loaded:
